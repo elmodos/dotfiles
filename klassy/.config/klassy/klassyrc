@@ -1,0 +1,11 @@
+[ButtonSizing]
+ButtonCustomCornerRadius=1
+
+[Global]
+LookAndFeelSet=org.kde.klassydarktraditional.desktop
+
+[Style]
+WindowDragMode=WD_FULL
+
+[Windeco]
+ButtonIconStyle=StyleTraditional
