@@ -15,7 +15,7 @@ config.window_padding = {
 
 config.initial_cols = 140
 config.initial_rows = 35
-window.enable_wayland = false
+config.enable_wayland = false
 
 -- Window title
 wezterm.on('format-window-title', function(tab, ane, tabs, panes, aconfig)
