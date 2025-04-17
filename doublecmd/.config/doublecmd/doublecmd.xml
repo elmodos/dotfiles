@@ -270,14 +270,14 @@
       <Quality>0</Quality>
     </ViewerBook>
     <Log>
-      <Name>Noto Sans Mono Regular</Name>
-      <Size>12</Size>
+      <Name>JetBrains Mono NL Medium</Name>
+      <Size>10</Size>
       <Style>0</Style>
       <Quality>0</Quality>
     </Log>
     <Console>
-      <Name>Noto Sans Mono Regular</Name>
-      <Size>12</Size>
+      <Name>JetBrains Mono NL</Name>
+      <Size>10</Size>
       <Style>0</Style>
       <Quality>0</Quality>
     </Console>
@@ -791,6 +791,64 @@
           <Unique>4C292337-679E-494C-9C50-F7D6810D7990</Unique>
           <FuncString>[DC().GETFILEATTR{}]</FuncString>
           <Width>100</Width>
+          <Align>0</Align>
+          <Font>
+            <Name>Noto Sans</Name>
+            <Size>10</Size>
+            <Style>0</Style>
+            <Quality>0</Quality>
+          </Font>
+          <UseInvertedSelection>False</UseInvertedSelection>
+          <UseInactiveSelColor>False</UseInactiveSelColor>
+          <Overcolor>True</Overcolor>
+        </Column>
+      </Columns>
+    </ColumnsSet>
+    <ColumnsSet UseFrameCursor="False">
+      <Name>&lt;Trash&gt;</Name>
+      <Unique>6C9B6C3B-8557-44EB-AFBE-B38D7F89A8C1</Unique>
+      <CustomView>False</CustomView>
+      <FileSystem>Trash</FileSystem>
+      <PixelsPerInch>96</PixelsPerInch>
+      <CursorBorder Enabled="False"/>
+      <Columns>
+        <Column>
+          <Title>Ім'я</Title>
+          <Unique>B4D118E7-381A-4D6E-A74E-DCAF5D8F6C7F</Unique>
+          <FuncString>[DC().GETFILENAMENOEXT{}]</FuncString>
+          <Width>229</Width>
+          <Align>0</Align>
+          <Font>
+            <Name>Noto Sans</Name>
+            <Size>10</Size>
+            <Style>0</Style>
+            <Quality>0</Quality>
+          </Font>
+          <UseInvertedSelection>False</UseInvertedSelection>
+          <UseInactiveSelColor>False</UseInactiveSelColor>
+          <Overcolor>True</Overcolor>
+        </Column>
+        <Column>
+          <Title>Розш</Title>
+          <Unique>400C40BF-19A7-4E92-A5CD-4739CD24CDC0</Unique>
+          <FuncString>[DC().GETFILEEXT{}]</FuncString>
+          <Width>114</Width>
+          <Align>0</Align>
+          <Font>
+            <Name>Noto Sans</Name>
+            <Size>10</Size>
+            <Style>0</Style>
+            <Quality>0</Quality>
+          </Font>
+          <UseInvertedSelection>False</UseInvertedSelection>
+          <UseInactiveSelColor>False</UseInactiveSelColor>
+          <Overcolor>True</Overcolor>
+        </Column>
+        <Column>
+          <Title>Original path</Title>
+          <Unique>400F7E26-2675-4EFF-860B-5FB04615DEC1</Unique>
+          <FuncString>[Plugin(FS).trash::orig-path{}]</FuncString>
+          <Width>421</Width>
           <Align>0</Align>
           <Font>
             <Name>Noto Sans</Name>
