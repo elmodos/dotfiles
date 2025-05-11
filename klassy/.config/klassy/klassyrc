@@ -1,11 +1,22 @@
+[ButtonColors]
+ButtonIconColorsActive=TitleBarText
+CloseButtonIconColorActive=AsSelected
+
 [ButtonSizing]
 ButtonCustomCornerRadius=1
 
 [Global]
-LookAndFeelSet=org.kde.klassydarktraditional.desktop
+LookAndFeelSet=org.kde.klassylighttraditional.desktop
 
 [Style]
+SplitterProxyEnabled=true
 WindowDragMode=WD_FULL
 
+[TitleBarOpacity]
+InactiveTitleBarOpacity=90
+
 [Windeco]
+BoldButtonIcons=BoldIconsHiDpiOnly
 ButtonIconStyle=StyleTraditional
+ButtonShape=ShapeIntegratedRoundedRectangleGrouped
+IconSize=IconVerySmall
