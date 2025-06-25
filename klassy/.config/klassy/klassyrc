@@ -1,9 +1,32 @@
+[ButtonBehaviour]
+ShowCloseOutlineOnHoverActive=false
+ShowCloseOutlineOnHoverInactive=false
+ShowCloseOutlineOnPressActive=false
+ShowCloseOutlineOnPressInactive=false
+ShowOutlineOnHoverActive=false
+ShowOutlineOnHoverInactive=false
+ShowOutlineOnPressActive=false
+ShowOutlineOnPressInactive=false
+
 [ButtonColors]
+ButtonBackgroundColorsActive=TitleBarTextNegativeClose
+ButtonBackgroundColorsInactive=TitleBarTextNegativeClose
+ButtonBackgroundOpacityActive=13
+ButtonBackgroundOpacityInactive=13
 ButtonIconColorsActive=TitleBarText
-CloseButtonIconColorActive=AsSelected
+ButtonIconOpacityInactive=100
+ButtonOverrideColorsActiveClose={"BackgroundHover":["NegativeFullySaturated"],"BackgroundPress":["NegativeFullySaturated",60]}
+ButtonOverrideColorsInactiveClose={"BackgroundHover":["NegativeFullySaturated"],"BackgroundPress":["NegativeFullySaturated",60]}
+LockButtonColorsActiveInactive=true
+OnPoorIconContrastActive=Nothing
+OnPoorIconContrastInactive=Nothing
 
 [ButtonSizing]
 ButtonCustomCornerRadius=1
+FullHeightButtonSpacingLeft=1
+FullHeightButtonSpacingRight=1
+FullHeightButtonWidthMarginRight=12
+SpacerButtonWidthRelative=50
 
 [Global]
 LookAndFeelSet=org.kde.klassylighttraditional.desktop
@@ -12,11 +35,20 @@ LookAndFeelSet=org.kde.klassylighttraditional.desktop
 SplitterProxyEnabled=true
 WindowDragMode=WD_FULL
 
-[TitleBarOpacity]
-InactiveTitleBarOpacity=90
+[TitleBarSpacing]
+PercentMaximizedTopBottomMargins=50
+TitleAlignment=AlignLeft
+TitleBarBottomMargin=2.25
+TitleBarTopMargin=2.25
 
 [Windeco]
-BoldButtonIcons=BoldIconsHiDpiOnly
-ButtonIconStyle=StyleTraditional
-ButtonShape=ShapeIntegratedRoundedRectangleGrouped
-IconSize=IconVerySmall
+BoldButtonIcons=BoldIconsBold
+ColorizeThinWindowOutlineWithButton=false
+IconSize=IconSmall
+WindowCornerRadius=0
+
+[WindowOutlineStyle]
+LockThinWindowOutlineStyleActiveInactive=true
+ThinWindowOutlineStyleActive=WindowOutlineContrast
+ThinWindowOutlineThickness=1.75
+WindowOutlineContrastOpacityActive=50
