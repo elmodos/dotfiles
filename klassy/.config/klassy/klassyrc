@@ -28,9 +28,6 @@ FullHeightButtonSpacingRight=1
 FullHeightButtonWidthMarginRight=12
 SpacerButtonWidthRelative=50
 
-[Global]
-LookAndFeelSet=org.kde.klassylighttraditional.desktop
-
 [Style]
 SplitterProxyEnabled=true
 WindowDragMode=WD_FULL
@@ -43,6 +40,7 @@ TitleBarTopMargin=2.25
 
 [Windeco]
 BoldButtonIcons=BoldIconsBold
+ButtonIconStyle=StyleMetro
 ColorizeThinWindowOutlineWithButton=false
 IconSize=IconSmall
 WindowCornerRadius=0
