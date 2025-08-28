@@ -8,7 +8,7 @@ local font_scale = 1.0
 if wezterm.target_triple == "aarch64-apple-darwin" then
 	font_scale = 1.4
 end
-config.font_size = 10 * font_scale
+config.font_size = 11 * font_scale
 
 config.window_padding = {
 	left = 0,
