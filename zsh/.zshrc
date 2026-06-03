@@ -1,5 +1,5 @@
 # If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
+export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
@@ -105,4 +105,4 @@ DEFAULT_USER=$USER
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 alias mc="mc -u"
 # Path
-export PATH="$HOME/.local/bin:$PATH"
+export QT_SCALE_FACTOR_ROUNDING_POLICY=Round
