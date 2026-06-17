@@ -6,7 +6,7 @@ config.hide_tab_bar_if_only_one_tab = true
 
 local font_scale = 1.0
 if wezterm.target_triple == "aarch64-apple-darwin" then
-	font_scale = 1.4
+	font_scale = 1.2
 end
 config.font_size = 11 * font_scale
 
@@ -20,6 +20,7 @@ config.window_padding = {
 config.initial_cols = 140
 config.initial_rows = 35
 config.enable_wayland = false
+config.use_resize_increments = true
 
 -- Window title
 wezterm.on("format-window-title", function(tab, ane, tabs, panes, aconfig)
