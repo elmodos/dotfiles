@@ -19,7 +19,7 @@ config.window_padding = {
 
 config.initial_cols = 140
 config.initial_rows = 35
-config.enable_wayland = false
+config.enable_wayland = true
 config.use_resize_increments = true
 
 -- Window title

@@ -1,6 +1,12 @@
 # If you come from bash you might have to change your $PATH.
 export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$HOME/.mint/bin:$PATH
 
+# Source bash profile for environment variables (PATH, etc.)
+# before Oh My Zsh sets up the prompt.
+if [[ -f ~/.bash_profile ]]; then
+  source ~/.bash_profile
+fi
+
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
@@ -106,7 +112,6 @@ DEFAULT_USER=$USER
 alias mc="mc -u"
 
 export PATH="$HOME/.local/bin:$PATH"
-source ~/.bash_profile
 
 if [[ -x /opt/homebrew/bin/brew ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
