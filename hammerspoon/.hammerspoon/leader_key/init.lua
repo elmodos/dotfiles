@@ -2,15 +2,28 @@
 
 local lastCtrlTime = 0
 local doublePressInterval = 0.4
+local modeTimeout = 2 -- auto-exit waiting mode after this many seconds of inactivity
 local alertStyle = { textSize = 14, radius = 0 }
 local myMode = hs.hotkey.modal.new()
+local modeTimer = nil
 
 local M = {}
 M.alertStyle = alertStyle
 M.mode = myMode
 
 function myMode:entered()
-    hs.alert.show("Waiting for command...", alertStyle, 1.5)
+    hs.alert.show("Waiting for command...", alertStyle, modeTimeout)
+    -- Auto-cancel if no command key follows, so a stray double-Ctrl doesn't
+    -- swallow a later keystroke meant for text input.
+    if modeTimer then modeTimer:stop() end
+    modeTimer = hs.timer.doAfter(modeTimeout, function() myMode:exit() end)
+end
+
+function myMode:exited()
+    if modeTimer then
+        modeTimer:stop()
+        modeTimer = nil
+    end
 end
 
 function M.alert(text, duration)
