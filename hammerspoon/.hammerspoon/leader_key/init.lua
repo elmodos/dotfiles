@@ -66,5 +66,6 @@ require("leader_key.tiling")(M)
 require("leader_key.workspaces")(M)
 require("leader_key.maximize")(M)
 require("leader_key.move_monitor")(M)
+require("leader_key.appearance")(M)
 
 return M
