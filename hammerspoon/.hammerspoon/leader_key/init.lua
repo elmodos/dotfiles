@@ -68,5 +68,6 @@ require("leader_key.maximize")(M)
 require("leader_key.move_monitor")(M)
 require("leader_key.appearance")(M)
 require("leader_key.center")(M)
+require("leader_key.convenient_size")(M)
 
 return M
