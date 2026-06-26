@@ -72,5 +72,5 @@ return function(leader)
     end
 
     -- Register tiling on Shift + \ (pipe "|")
-    leader.registerCommand({"shift"}, "\\", tileWindowsSideBySide)
+    leader.registerCommand({"shift"}, "\\", tileWindowsSideBySide, "|")
 end

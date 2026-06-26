@@ -36,5 +36,5 @@ return function(leader)
 
         win:setFrame(hs.geometry.rect(x, y, w, h), 0) -- 0 = instant, no animation
         leader.alert("Convenient size")
-    end)
+    end, "w — size")
 end

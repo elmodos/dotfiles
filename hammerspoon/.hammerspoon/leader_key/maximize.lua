@@ -14,5 +14,5 @@ return function(leader)
 
         win:maximize(0) -- duration 0 = instant, no animation
         leader.alert("Maximized")
-    end)
+    end, "+")
 end

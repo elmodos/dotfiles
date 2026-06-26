@@ -19,7 +19,7 @@ return function(leader)
         else
             leader.alert("Failed to set Dark Mode")
         end
-    end)
+    end, "d — dark")
 
     leader.registerCommand({}, "l", function()
         local script = [[
@@ -35,5 +35,5 @@ return function(leader)
         else
             leader.alert("Failed to set Light Mode")
         end
-    end)
+    end, "l — light")
 end

@@ -18,6 +18,6 @@ return function(leader)
 
             hs.spaces.gotoSpace(spaces[i])
             leader.alert("Space " .. i)
-        end)
+        end, (i == 1) and "1-9" or false) -- collapse the nine bindings to one hint
     end
 end

@@ -14,5 +14,5 @@ return function(leader)
 
         win:centerOnScreen(nil, true, 0) -- 0 duration for instant move
         leader.alert("Centered")
-    end)
+    end, "c — center")
 end
