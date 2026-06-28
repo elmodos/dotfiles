@@ -15,9 +15,7 @@
 
 -- ---- Tuning (tweak to taste) -----------------------------------------------
 local TICK = 0.016        -- timer period for continuous scroll (~60fps)
-local STEP = 8            -- base pixels per tick while a direction is held
-local MAX_MULT = 5        -- acceleration ceiling (multiplied onto STEP)
-local ACCEL = 0.2         -- how fast the multiplier ramps toward MAX_MULT/tick
+local STEP = 8            -- scroll speed in pixels per tick while a direction is held
 local PAGE_FRACTION = 0.5 -- fraction of the window height for d/u (half page)
 local FULL_PAGE_FRACTION = 0.92 -- fraction for PageUp/PageDown (full page)
 local JUMP = 100000       -- big one-shot scroll for g / G (top / bottom)
@@ -29,7 +27,6 @@ local alertStyle = { textSize = 14, radius = 0 }
 local scroll = hs.hotkey.modal.new()
 
 local dirs = {}      -- set of currently-held directions, e.g. dirs.down = true
-local mult = 1       -- current acceleration multiplier
 local timer = nil
 local alertId = nil
 
@@ -57,10 +54,8 @@ local function startTimer()
     timer = hs.timer.doEvery(TICK, function()
         local x, y = vector()
         if x == 0 and y == 0 then return end -- opposite keys cancel out
-        mult = math.min(MAX_MULT, mult + ACCEL)
-        local step = STEP * mult
         hs.eventtap.event.newScrollEvent(
-            { math.floor(x * step), math.floor(y * step) }, {}, "pixel"
+            { math.floor(x * STEP), math.floor(y * STEP) }, {}, "pixel"
         ):post()
     end)
 end
@@ -68,7 +63,6 @@ end
 local function stopTimerIfIdle()
     if next(dirs) == nil then
         if timer then timer:stop(); timer = nil end
-        mult = 1 -- reset acceleration once everything is released
     end
 end
 
@@ -135,7 +129,6 @@ end
 function scroll:exited()
     dirs = {}
     if timer then timer:stop(); timer = nil end
-    mult = 1
     if alertId then hs.alert.closeSpecific(alertId); alertId = nil end
 end
 
