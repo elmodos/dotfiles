@@ -1,11 +1,12 @@
 -- FEATURE: Accessibility hint-clicker (HomeRow / Vimium-style) — PROTOTYPE
 --
--- Cmd+Shift+Space      label every clickable element in the focused window,
---                      type the label to LEFT-click it.
+-- Cmd+Shift+Space      label every clickable element across the focused window,
+--                      the frontmost app's menu bar, the menu-bar extras (tray),
+--                      and the Dock; type the label to LEFT-click it.
 --                      If the last key in sequence is typed with Shift, it RIGHT-clicks.
 --   esc / backspace    cancel / undo last typed char.
 --
--- How it works: walk the focused window's accessibility tree (hs.axuielement)
+-- How it works: walk each root's accessibility tree (hs.axuielement)
 -- collecting elements that are actionable (clickable role or an AXPress action),
 -- draw a Vimium-style label over each (hs.canvas), capture keystrokes with an
 -- hs.eventtap, and on a full label synthesize a click at the element's center.
@@ -30,6 +31,7 @@ local CLICKABLE_ROLES = {
     AXMenuItem = true, AXMenuButton = true, AXPopUpButton = true,
     AXTextField = true, AXTextArea = true, AXComboBox = true,
     AXDisclosureTriangle = true, AXTab = true, AXSlider = true, AXCell = true,
+    AXMenuBarItem = true, AXDockItem = true,
 }
 local alertStyle = { textSize = 14, radius = 0 }
 -- ----------------------------------------------------------------------------
@@ -117,9 +119,13 @@ local function draw()
         if h.label:sub(1, #typed) == typed then
             local remaining = h.label:sub(#typed + 1) -- shrink as you type
             local f = h.frame
-            local x, y = f.x - sf.x, f.y - sf.y
-            local w = 8 + 10 * #remaining
-            local boxH = FONT_SIZE + 6
+            local w = 4 + 8 * #remaining   -- compact: tight to the glyphs
+            local boxH = FONT_SIZE + 4
+            -- Anchor the label's top-center to the element's center point
+            -- (matches HomeRow): the pill hangs straight down from the midpoint.
+            local cx = f.x + f.w / 2 - sf.x
+            local cy = f.y + f.h / 2 - sf.y
+            local x, y = cx - w / 2, cy
             els[#els + 1] = {
                 type = "rectangle", action = "fill",
                 fillColor = { red = 1, green = 0.84, blue = 0.25, alpha = 0.95 },
@@ -129,11 +135,11 @@ local function draw()
                 frame = { x = x, y = y, w = w, h = boxH },
             }
             els[#els + 1] = {
-                type = "text", text = remaining,
+                type = "text", text = remaining:upper(),
                 textColor = { red = 0, green = 0, blue = 0, alpha = 1 },
                 textSize = FONT_SIZE, textFont = ".AppleSystemUIFontBold",
                 textAlignment = "center",
-                frame = { x = x, y = y + 2, w = w, h = boxH },
+                frame = { x = x, y = y, w = w, h = boxH },
             }
         end
     end
@@ -168,7 +174,8 @@ local function onKey(e)
             if h.label:sub(1, #candidate) == candidate then matches[#matches + 1] = h end
         end
         if #matches == 0 then
-            return true -- dead end: ignore the keystroke
+            cleanup() -- wrong key: dismiss the overlay
+            return true
         end
         typed = candidate
         if #matches == 1 and matches[1].label == typed then
@@ -182,21 +189,55 @@ local function onKey(e)
         draw()
         return true
     end
-    return true -- swallow everything else so it doesn't leak into the app
+    cleanup() -- any other key dismisses the overlay
+    return true
 end
 
 -- ---- Entry -------------------------------------------------------------
+-- Collect the AX roots to scan: focused window, the frontmost app's menu bar,
+-- every app's menu-bar extras (the tray), and the Dock.
+local function gatherRoots()
+    local roots = {}
+    local function add(el) if el then roots[#roots + 1] = el end end
+
+    local win = hs.window.focusedWindow()
+    if win then add(hs.axuielement.windowElement(win)) end
+
+    -- Frontmost app's menu bar (File / Edit / …) — only it shows one.
+    local front = hs.application.frontmostApplication()
+    if front then
+        local axapp = hs.axuielement.applicationElement(front)
+        if axapp then add(axapp:attributeValue("AXMenuBar")) end
+    end
+
+    -- Tray icons live in each owning app's AXExtrasMenuBar (Control Center,
+    -- SystemUIServer, and third-party status items each have their own).
+    for _, app in ipairs(hs.application.runningApplications()) do
+        pcall(function()
+            local axapp = hs.axuielement.applicationElement(app)
+            if axapp then add(axapp:attributeValue("AXExtrasMenuBar")) end
+        end)
+    end
+
+    -- Dock: its application element descends into the AXList of AXDockItems.
+    local dock = hs.application.find("Dock")
+    if dock then add(hs.axuielement.applicationElement(dock)) end
+
+    return roots, win
+end
+
 local function start()
     cleanup()
 
-    local win = hs.window.focusedWindow()
-    if not win then hs.alert.show("No focused window", alertStyle) return end
-    local axwin = hs.axuielement.windowElement(win)
-    if not axwin then hs.alert.show("No accessibility for this window", alertStyle) return end
+    local roots, win = gatherRoots()
+    local screen = (win and win:screen()) or hs.screen.mainScreen()
+    local sf = screen:fullFrame()
 
-    local sf = win:screen():fullFrame()
     local acc = {}
-    collect(axwin, 0, acc, sf)
+    for _, root in ipairs(roots) do
+        collect(root, 0, acc, sf)
+        if #acc >= MAX_ELEMENTS then break end
+    end
     if #acc == 0 then hs.alert.show("No clickable elements found", alertStyle) return end
 
     local labels = genLabels(#acc)
@@ -207,7 +248,7 @@ local function start()
     typed = ""
 
     canvas = hs.canvas.new(sf)
-    canvas:level(hs.canvas.windowLevels.overlay)
+    canvas:level(hs.canvas.windowLevels.popUpMenu) -- above the system menu bar
     canvas:show()
     draw()
 
