@@ -66,15 +66,33 @@ function M.registerCommand(modifiers, key, fn, label)
     end)
 end
 
-M.ctrlTapWatcher = hs.eventtap.new({hs.eventtap.event.types.flagsChanged}, function(event)
+M.ctrlTapWatcher = hs.eventtap.new({
+    hs.eventtap.event.types.flagsChanged,
+    hs.eventtap.event.types.keyDown,
+    hs.eventtap.event.types.leftMouseDown,
+    hs.eventtap.event.types.rightMouseDown,
+}, function(event)
+    local type = event:getType()
+    if type == hs.eventtap.event.types.keyDown or
+       type == hs.eventtap.event.types.leftMouseDown or
+       type == hs.eventtap.event.types.rightMouseDown then
+        lastCtrlTime = 0
+        return false
+    end
+
     local flags = event:getFlags()
     local keyCode = event:getKeyCode()
 
-    local onlyCtrl = (keyCode == 59 or keyCode == 62)
-        and flags.ctrl and not flags.cmd and not flags.alt and not flags.shift and not flags.fn
+    -- If a different modifier key was pressed/released, reset the tap timer
+    if keyCode ~= 59 and keyCode ~= 62 then
+        lastCtrlTime = 0
+        return false
+    end
+
+    local onlyCtrl = flags.ctrl and not flags.cmd and not flags.alt and not flags.shift and not flags.fn
 
     if not onlyCtrl then
-        if flags.ctrl then lastCtrlTime = 0 end
+        -- Control key was released or other flags are active
         return false
     end
 
