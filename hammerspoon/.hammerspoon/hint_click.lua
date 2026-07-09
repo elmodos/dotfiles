@@ -33,6 +33,14 @@ local CLICKABLE_ROLES = {
     AXDisclosureTriangle = true, AXTab = true, AXSlider = true, AXCell = true,
     AXMenuBarItem = true, AXDockItem = true,
 }
+-- Purely structural/text roles that never expose AXPress in practice — skip
+-- the extra actionNames() probe for them (a second AX round-trip per node)
+-- since most nodes in any tree fall into one of these.
+local NON_ACTIONABLE_ROLES = {
+    AXGroup = true, AXStaticText = true, AXImage = true, AXUnknown = true,
+    AXWindow = true, AXScrollArea = true, AXHeading = true,
+    AXLayoutArea = true, AXSplitGroup = true,
+}
 local alertStyle = { textSize = 14, radius = 0 }
 -- ----------------------------------------------------------------------------
 
@@ -58,6 +66,7 @@ end
 local function isActionable(el)
     local role = el:attributeValue("AXRole")
     if role and CLICKABLE_ROLES[role] then return true end
+    if role and NON_ACTIONABLE_ROLES[role] then return false end
     local ok, actions = pcall(function() return el:actionNames() end)
     if ok and actions then
         for _, a in ipairs(actions) do
@@ -212,10 +221,16 @@ local function gatherRoots()
 
     -- Tray icons live in each owning app's AXExtrasMenuBar (Control Center,
     -- SystemUIServer, and third-party status items each have their own).
+    -- This queries EVERY running app (150+ on a typical machine) on every
+    -- invocation; a short per-element timeout keeps one slow/unresponsive
+    -- app from stalling the whole scan for the OS's default AX timeout.
     for _, app in ipairs(hs.application.runningApplications()) do
         pcall(function()
             local axapp = hs.axuielement.applicationElement(app)
-            if axapp then add(axapp:attributeValue("AXExtrasMenuBar")) end
+            if axapp then
+                axapp:setTimeout(0.15)
+                add(axapp:attributeValue("AXExtrasMenuBar"))
+            end
         end)
     end
 

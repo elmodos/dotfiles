@@ -253,15 +253,15 @@ local function drawSelection()
             
             els[#els + 1] = {
                 type = "rectangle", action = "fill",
-                fillColor = { red = 0.15, green = 0.65, blue = 1.0, alpha = 0.95 },
-                strokeColor = { red = 0.0, green = 0.35, blue = 0.7, alpha = 1 },
+                fillColor = { red = 1, green = 0.84, blue = 0.25, alpha = 0.95 },
+                strokeColor = { red = 0.35, green = 0.27, blue = 0, alpha = 1 },
                 strokeWidth = 1,
                 roundedRectRadii = { xRadius = 3, yRadius = 3 },
                 frame = { x = x, y = y, w = w, h = boxH },
             }
             els[#els + 1] = {
                 type = "text", text = remaining,
-                textColor = { red = 1, green = 1, blue = 1, alpha = 1 },
+                textColor = { red = 0, green = 0, blue = 0, alpha = 1 },
                 textSize = FONT_SIZE, textFont = ".AppleSystemUIFontBold",
                 textAlignment = "center",
                 frame = { x = x, y = y + 2, w = w, h = boxH },
@@ -287,7 +287,7 @@ local function showBorder(frame)
         {
             type = "rectangle",
             action = "stroke",
-            strokeColor = { red = 0.15, green = 0.65, blue = 1.0, alpha = 0.8 },
+            strokeColor = { red = 1, green = 0.84, blue = 0.25, alpha = 0.8 },
             strokeWidth = 3,
             roundedRectRadii = { xRadius = 4, yRadius = 4 },
             frame = { x = 1.5, y = 1.5, w = frame.w - 3, h = frame.h - 3 }
