@@ -2,7 +2,9 @@
 --
 -- On an ultrawide monitor, maximizing stretches a window across the whole
 -- width, which is unusable for a terminal/editor. This shrinks the focused
--- window to a comfortable reading column and centers it on its screen.
+-- window to a comfortable reading column, keeping its current position
+-- (just nudged back on-screen if the new size would otherwise hang off an
+-- edge).
 --
 -- The target width is a fraction of the screen width, then CLAMPED on both
 -- ends:
@@ -26,13 +28,19 @@ return function(leader)
         end
 
         local frame = win:screen():frame() -- usable area (excludes menu bar/Dock)
+        local current = win:frame()
 
         -- Clamp the preferred width between min and max, then never exceed the
         -- screen (matters only on displays narrower than minWidth).
         local w = math.min(frame.w, math.max(minWidth, math.min(frame.w * widthFraction, maxWidth)))
         local h = frame.h * heightFraction
-        local x = frame.x + (frame.w - w) / 2
-        local y = frame.y + (frame.h - h) / 2
+
+        -- Keep the window's current top-left, but pull it back on-screen if
+        -- the new size would otherwise push it past the screen's edges.
+        local x = math.min(current.x, frame.x + frame.w - w)
+        local y = math.min(current.y, frame.y + frame.h - h)
+        x = math.max(x, frame.x)
+        y = math.max(y, frame.y)
 
         win:setFrame(hs.geometry.rect(x, y, w, h), 0) -- 0 = instant, no animation
         leader.alert("Convenient size")
