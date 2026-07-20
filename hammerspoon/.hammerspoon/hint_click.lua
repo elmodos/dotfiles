@@ -23,6 +23,8 @@ local MAX_ELEMENTS = 400  -- safety cap (also the max number of 2-char labels be
 local MAX_DEPTH = 50      -- how deep to descend the AX tree
 local TIMEOUT = 6         -- auto-cancel after this many seconds of inactivity
 local FONT_SIZE = 14
+local TRAY_SCAN_BUDGET = 0.5  -- hard wall-clock cap for the tray-icon sweep in gatherRoots
+local TRAY_APP_TIMEOUT = 0.08 -- per-app AX timeout while sweeping for tray icons
 -- Home-row-first alphabet; 20 chars -> 400 unique 2-char labels.
 local CHARS = "fjdkslaghzqwertyuiop"
 -- Roles we always treat as clickable even without probing actions (cheap check).
@@ -45,13 +47,14 @@ local alertStyle = { textSize = 14, radius = 0 }
 -- ----------------------------------------------------------------------------
 
 -- Per-invocation state.
-local canvas, tap, timeoutTimer
+local canvas, tap, mouseTap, timeoutTimer
 local hints = {}   -- { {el=, frame=, label=}, ... }
 local typed = ""
 
 local function cleanup()
     if timeoutTimer then timeoutTimer:stop(); timeoutTimer = nil end
     if tap then tap:stop(); tap = nil end
+    if mouseTap then mouseTap:stop(); mouseTap = nil end
     if canvas then canvas:delete(); canvas = nil end
     hints = {}
     typed = ""
@@ -222,13 +225,18 @@ local function gatherRoots()
     -- Tray icons live in each owning app's AXExtrasMenuBar (Control Center,
     -- SystemUIServer, and third-party status items each have their own).
     -- This queries EVERY running app (150+ on a typical machine) on every
-    -- invocation; a short per-element timeout keeps one slow/unresponsive
-    -- app from stalling the whole scan for the OS's default AX timeout.
+    -- invocation; a short per-app timeout plus a hard overall budget keep
+    -- one slow/unresponsive app -- or just having many apps open -- from
+    -- blocking Hammerspoon's main thread long enough for macOS to disable
+    -- its global keyDown eventtap (leader_key/init.lua's ctrlTapWatcher)
+    -- and start dropping real keystrokes.
+    local scanDeadline = hs.timer.secondsSinceEpoch() + TRAY_SCAN_BUDGET
     for _, app in ipairs(hs.application.runningApplications()) do
+        if hs.timer.secondsSinceEpoch() > scanDeadline then break end
         pcall(function()
             local axapp = hs.axuielement.applicationElement(app)
             if axapp then
-                axapp:setTimeout(0.15)
+                axapp:setTimeout(TRAY_APP_TIMEOUT)
                 add(axapp:attributeValue("AXExtrasMenuBar"))
             end
         end)
@@ -268,6 +276,18 @@ local function start()
     draw()
 
     tap = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, onKey):start()
+
+    -- A click means the user's attention (and next keystroke) has moved
+    -- elsewhere; leaving the overlay armed would silently eat their next
+    -- keystroke (or worse, fire a click if it happens to spell a label). A
+    -- separate tap, rather than adding mouse types to `tap` above, keeps this
+    -- from touching the keyDown handling at all.
+    mouseTap = hs.eventtap.new({
+        hs.eventtap.event.types.leftMouseDown,
+        hs.eventtap.event.types.rightMouseDown,
+        hs.eventtap.event.types.otherMouseDown,
+    }, function() cleanup(); return false end):start()
+
     resetTimeout()
 end
 

@@ -1,4 +1,5 @@
-hs = hs -- avoid code editor spamming with error 
+hs = hs -- avoid code editor spamming with error
+hs.axuielement.systemWideElement():setTimeout(2.0)
 
 require("toggle_terminal")
 require("leader_key")

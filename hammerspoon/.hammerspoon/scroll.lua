@@ -20,6 +20,11 @@ local FULL_PAGE_FRACTION = 0.92 -- fraction for PageUp/PageDown (full page)
 local JUMP = 100000       -- big one-shot scroll for g / G (top / bottom)
 local WARP_TO_FOCUSED = true
 local HINT_DURATION = 2.5 -- seconds the help bar stays before fading ("?" re-shows it)
+-- Safety net: auto-exit scroll mode after this long with no scroll activity,
+-- in case esc/q was forgotten -- otherwise h/j/k/l/d/u/g/arrows/Home/End/
+-- PageUp/PageDown keep silently scrolling instead of being typed or moving
+-- the text cursor wherever focus ends up next.
+local SCROLL_IDLE_TIMEOUT = 45
 local alertStyle = { textSize = 14, radius = 0 }
 
 -- Hint selection tuning
@@ -46,11 +51,21 @@ local dirs = {}      -- set of currently-held directions, e.g. dirs.down = true
 local timer = nil
 local alertId = nil
 local borderCanvas = nil
+local scrollIdleTimer = nil
+
+-- Reset from actual scroll actions only (the continuous-scroll ticker,
+-- page/jump, and the help bar) -- never from mere keypresses -- so it can't
+-- be starved open the way onSelectKey used to be (see below).
+local function resetScrollIdle()
+    if scrollIdleTimer then scrollIdleTimer:stop() end
+    scrollIdleTimer = hs.timer.doAfter(SCROLL_IDLE_TIMEOUT, function() scroll:exit() end)
+end
 
 local HINT_TEXT = "⬍ scroll  ·  hjkl / arrows move  ·  d/u / PgUp·PgDn page  ·  g/G / Home·End ends  ·  ? help  ·  esc"
 
 -- Show the help bar briefly; it fades on its own after HINT_DURATION.
 local function showHint()
+    resetScrollIdle()
     if alertId then hs.alert.closeSpecific(alertId) end
     alertId = hs.alert.show(HINT_TEXT, alertStyle, hs.screen.mainScreen(), HINT_DURATION)
 end
@@ -70,6 +85,7 @@ local function startTimer()
     timer = hs.timer.doEvery(TICK, function()
         local x, y = vector()
         if x == 0 and y == 0 then return end
+        resetScrollIdle()
         hs.eventtap.event.newScrollEvent(
             { math.floor(x * STEP), math.floor(y * STEP) }, {}, "pixel"
         ):post()
@@ -106,11 +122,13 @@ local function viewHeight()
 end
 
 local function pageScroll(sign, fraction)
+    resetScrollIdle()
     local amount = math.floor(viewHeight() * (fraction or PAGE_FRACTION)) * sign
     hs.eventtap.event.newScrollEvent({ 0, amount }, {}, "pixel"):post()
 end
 
 local function jump(sign)
+    resetScrollIdle()
     hs.eventtap.event.newScrollEvent({ 0, JUMP * sign }, {}, "pixel"):post()
 end
 
@@ -136,6 +154,7 @@ end
 function scroll:exited()
     dirs = {}
     if timer then timer:stop(); timer = nil end
+    if scrollIdleTimer then scrollIdleTimer:stop(); scrollIdleTimer = nil end
     if alertId then hs.alert.closeSpecific(alertId); alertId = nil end
     if borderCanvas then borderCanvas:delete(); borderCanvas = nil end
 end
@@ -221,13 +240,14 @@ end
 
 -- ---- Selection Overlay & Keystroke Capture ---------------------------------
 
-local selectCanvas, selectTap, selectTimeoutTimer
+local selectCanvas, selectTap, selectMouseTap, selectTimeoutTimer
 local selectHints = {}
 local selectTyped = ""
 
 local function cleanupSelection()
     if selectTimeoutTimer then selectTimeoutTimer:stop(); selectTimeoutTimer = nil end
     if selectTap then selectTap:stop(); selectTap = nil end
+    if selectMouseTap then selectMouseTap:stop(); selectMouseTap = nil end
     if selectCanvas then selectCanvas:delete(); selectCanvas = nil end
     selectHints = {}
     selectTyped = ""
@@ -333,6 +353,7 @@ local function onSelectKey(e)
             end
         end
         if #matches == 0 then
+            cleanupSelection() -- wrong key: dismiss instead of silently eating all further typing
             return true
         end
         selectTyped = candidate
@@ -345,6 +366,7 @@ local function onSelectKey(e)
         drawSelection()
         return true
     end
+    cleanupSelection() -- any other key dismisses the picker
     return true
 end
 
@@ -387,6 +409,16 @@ local function start()
         drawSelection()
 
         selectTap = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, onSelectKey):start()
+
+        -- Separate tap (rather than adding mouse types to selectTap above) so
+        -- this can't interfere with the keyDown handling: a click means focus
+        -- has moved on and the picker should stop capturing keystrokes.
+        selectMouseTap = hs.eventtap.new({
+            hs.eventtap.event.types.leftMouseDown,
+            hs.eventtap.event.types.rightMouseDown,
+            hs.eventtap.event.types.otherMouseDown,
+        }, function() cleanupSelection(); return false end):start()
+
         resetSelectionTimeout()
     end
 end

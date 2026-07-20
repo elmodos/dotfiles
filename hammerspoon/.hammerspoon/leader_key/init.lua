@@ -198,6 +198,18 @@ M.ctrlTapWatcher = hs.eventtap.new({
     return false
 end):start()
 
+-- macOS can silently disable a CGEventTap if its callback doesn't respond
+-- quickly enough (e.g. while gatherRoots() in hint_click.lua runs a slow
+-- synchronous AX sweep on this same thread). Since ctrlTapWatcher runs on
+-- every keystroke system-wide, once disabled it stops seeing real typing
+-- until something restarts it. Poll and self-heal rather than requiring a
+-- config reload.
+hs.timer.doEvery(2, function()
+    if not M.ctrlTapWatcher:isEnabled() then
+        M.ctrlTapWatcher:start()
+    end
+end)
+
 myMode:bind({}, "escape", function() myMode:exit() end)
 
 -- Menu navigation: Up/Down move the highlight (wrapping) and stay in the
