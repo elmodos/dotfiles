@@ -3,7 +3,9 @@ export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$HOME/.mint/bin:$PATH
 
 # Source bash profile for environment variables (PATH, etc.)
 # before Oh My Zsh sets up the prompt.
-if [[ -f ~/.bash_profile ]]; then
+# Only on macOS: Linux's /etc/bashrc uses bash-only builtins (e.g. shopt)
+# that break when sourced from zsh.
+if [[ "$OSTYPE" == darwin* && -f ~/.bash_profile ]]; then
   source ~/.bash_profile
 fi
 
@@ -76,7 +78,7 @@ ZSH_THEME="agnoster"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git colored-man-pages command-not-found fzf zsh-interactive-cd)
+plugins=(git colored-man-pages fzf zsh-interactive-cd)
 
 source $ZSH/oh-my-zsh.sh
 
