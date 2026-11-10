@@ -1,8 +1,17 @@
 hs = hs -- avoid code editor spamming with error
 hs.axuielement.systemWideElement():setTimeout(2.0)
 
+require("key_remap")
 require("toggle_terminal")
-require("leader_key")
+require("toggle_claude")
+require("tiling")
+require("workspaces")
+require("maximize")
+require("move_monitor")
+require("appearance")
+require("center")
+require("convenient_size")
+require("move_resize")
 require("spaces_menubar")
 require("scroll")
 require("hint_click")

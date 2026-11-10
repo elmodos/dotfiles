@@ -42,10 +42,21 @@ local menubar = hs.menubar.new()
 M.menubar = menubar
 M.watchers = {}
 
+-- ONE hidden, never-shown canvas, reused for every measure + render.
+-- Every hs.canvas is a real NSWindow, and hs.drawing.getTextDrawingSize()
+-- secretly creates (and destroys) a throwaway canvas per call. The previous
+-- version measured each text fragment that way and built a fresh canvas per
+-- render, every 2 s: ~20 windows created/destroyed per tick, forever. That
+-- steady churn on Hammerspoon's main thread is what made CPU creep up over
+-- time and hotkeys (e.g. Ctrl-` for WezTerm) start lagging.
+local canvas = hs.canvas.new({ x = 0, y = 0, w = 1, h = 1 })
+
 -- Screens left-to-right, so the widget order matches physical layout.
 local function orderedScreens()
     local screens = hs.screen.allScreens()
-    table.sort(screens, function(a, b) return a:frame().x < b:frame().x end)
+    local xs = {}
+    for _, s in ipairs(screens) do xs[s] = s:frame().x end
+    table.sort(screens, function(a, b) return xs[a] < xs[b] end)
     return screens
 end
 
@@ -76,60 +87,83 @@ local function scaleAttr(attr, scale)
     return out
 end
 
+-- Snapshot the Spaces layout with ONE private-API call.
+-- hs.spaces.allSpaces() + activeSpaces() would each re-fetch and re-convert
+-- this same structure once per screen; this runs on every poll tick, so it
+-- has to stay cheap. Returns an ordered list of { count, active } per screen
+-- (left-to-right) plus a short signature string used to skip no-op redraws.
+local function readLayout()
+    local data = hs.spaces.data_managedDisplaySpaces()
+    if not data then return nil end
+
+    local byDisplay = {}
+    for _, d in ipairs(data) do
+        local ids = {}
+        for _, space in ipairs(d.Spaces or {}) do ids[#ids + 1] = space.ManagedSpaceID end
+        local current = d["Current Space"]
+        byDisplay[d["Display Identifier"]] = {
+            spaces = ids,
+            active = current and current.ManagedSpaceID,
+        }
+    end
+
+    -- Without "Displays have separate Spaces", macOS reports a single
+    -- display keyed "Main" shared by every screen (same as hs.spaces does).
+    local separate = hs.spaces.screensHaveSeparateSpaces()
+
+    local layout, sig = {}, {}
+    for _, screen in ipairs(orderedScreens()) do
+        local uuid = screen:getUUID()
+        local d = uuid and byDisplay[separate and uuid or "Main"]
+        if d and #d.spaces > 0 then
+            local activeIndex = 0
+            for i, id in ipairs(d.spaces) do
+                if id == d.active then activeIndex = i; break end
+            end
+            layout[#layout + 1] = { count = #d.spaces, active = activeIndex }
+            sig[#sig + 1] = #d.spaces .. ":" .. activeIndex
+        end
+    end
+    return layout, table.concat(sig, ",")
+end
+
 -- Build a flat, left-to-right list of segments to render. Each segment is a
 -- styled-text fragment plus whether it's the active space (gets a pill).
-local function buildSegments(scale)
-    local all = hs.spaces.allSpaces()        -- screenUUID -> { spaceID, ... }
-    local active = hs.spaces.activeSpaces()   -- screenUUID -> active spaceID
-    if not all then return nil end
-
+local function buildSegments(layout, scale)
     local sepA = scaleAttr(separatorAttr, scale)
     local gapA = scaleAttr(gapAttr, scale)
     local activeA = scaleAttr(activeAttr, scale)
     local inactiveA = scaleAttr(inactiveAttr, scale)
 
     local segs = {}
-    local firstScreen = true
-
-    for _, screen in ipairs(orderedScreens()) do
-        local uuid = screen:getUUID()
-        local spaces = uuid and all[uuid]
-        if spaces and #spaces > 0 then
-            if not firstScreen then
-                segs[#segs + 1] = { styled = hs.styledtext.new(SEPARATOR, sepA) }
+    for n, screen in ipairs(layout) do
+        if n > 1 then
+            segs[#segs + 1] = { styled = hs.styledtext.new(SEPARATOR, sepA) }
+        end
+        for i = 1, screen.count do
+            if i > 1 and GAP_SCALE > 0 then
+                segs[#segs + 1] = { styled = hs.styledtext.new(" ", gapA) }
             end
-            firstScreen = false
-
-            local activeId = active and active[uuid]
-            for i, spaceId in ipairs(spaces) do
-                if i > 1 and GAP_SCALE > 0 then
-                    segs[#segs + 1] = { styled = hs.styledtext.new(" ", gapA) }
-                end
-                local isActive = (spaceId == activeId)
-                local attr = isActive and activeA or inactiveA
-                segs[#segs + 1] = {
-                    styled = hs.styledtext.new(tostring(i), attr),
-                    active = isActive,
-                    digit = true,
-                }
-            end
+            local isActive = (i == screen.active)
+            segs[#segs + 1] = {
+                styled = hs.styledtext.new(tostring(i), isActive and activeA or inactiveA),
+                active = isActive,
+                digit = true,
+            }
         end
     end
-
     return segs
 end
 
-local function render()
-    if not menubar then return end
-
-    local scale = currentScale()
-    local segs = buildSegments(scale)
-    if not segs then return end
-    if #segs == 0 then
+local function render(layout)
+    if #layout == 0 then
         menubar:setIcon(nil)
         menubar:setTitle("")
         return
     end
+
+    local scale = currentScale()
+    local segs = buildSegments(layout, scale)
 
     -- Geometry is in supersampled pixels; scale the point-based knobs to match.
     local padX = PILL_PAD_X * scale
@@ -137,9 +171,11 @@ local function render()
     local radius = PILL_RADIUS * scale
 
     -- Measure each segment so we can lay them out and size the canvas.
+    -- (canvas:minimumTextSize is what hs.drawing.getTextDrawingSize calls
+    -- internally -- minus the throwaway window it creates per call.)
     local maxH = 0
     for _, s in ipairs(segs) do
-        s.size = hs.drawing.getTextDrawingSize(s.styled)
+        s.size = canvas:minimumTextSize(s.styled)
         if s.size.h > maxH then maxH = s.size.h end
     end
 
@@ -149,7 +185,7 @@ local function render()
         totalW = totalW + s.size.w + (s.digit and padX * 2 or 0)
     end
 
-    local c = hs.canvas.new({ x = 0, y = 0, w = totalW, h = canvasH })
+    local els = {}
     local x = 0
     for _, s in ipairs(segs) do
         local w = s.size.w
@@ -157,33 +193,34 @@ local function render()
         if s.digit then
             -- Pill (opaque when active, semi-transparent otherwise)...
             local alpha = s.active and PILL_ALPHA_ACTIVE or PILL_ALPHA_INACTIVE
-            c:appendElements({
+            els[#els + 1] = {
                 type = "rectangle",
                 action = "fill",
                 fillColor = { white = 1.0, alpha = alpha },
                 roundedRectRadii = { xRadius = radius, yRadius = radius },
                 frame = { x = x, y = 0, w = w + padX * 2, h = canvasH },
-            })
+            }
             -- ...with the digit punched out of it (transparent cut-out).
-            c:appendElements({
+            els[#els + 1] = {
                 type = "text",
                 text = s.styled,
                 frame = { x = x + padX, y = y, w = w, h = s.size.h },
                 compositeRule = "destinationOut",
-            })
+            }
             x = x + w + padX * 2
         else
-            c:appendElements({
+            els[#els + 1] = {
                 type = "text",
                 text = s.styled,
                 frame = { x = x, y = y, w = w, h = s.size.h },
-            })
+            }
             x = x + w
         end
     end
 
-    local img = c:imageFromCanvas()
-    c:delete()
+    canvas:size({ w = totalW, h = canvasH })
+    canvas:replaceElements(els)
+    local img = canvas:imageFromCanvas()
 
     -- Report the logical (point) size while keeping the supersampled pixels, so
     -- the image is Retina-crisp without doubling its on-screen size. setSize
@@ -193,19 +230,37 @@ local function render()
     menubar:setTitle("")
     menubar:setIcon(img, true) -- template: pill adapts to light/dark, holes stay clear
 end
-M.render = render
 
--- Watchers: active-space change + display config change.
-M.watchers.spaces = hs.spaces.watcher.new(render):start()
-M.watchers.screen = hs.screen.watcher.new(render):start()
+-- Re-render only when what's shown actually changed. Every setIcon also
+-- makes macOS re-snapshot the status item on every display, so skipping
+-- no-op redraws matters as much as making the redraw itself cheap.
+-- force=true for display changes (scale/arrangement) and clicks.
+local lastSignature = nil
+local function update(force)
+    local layout, sig = readLayout()
+    if not layout then return end
+    if not force and sig == lastSignature then return end
+    lastSignature = sig
+    render(layout)
+end
+M.update = update
 
--- The space watcher fires on switches but NOT on add/remove of spaces, so poll
--- slowly to keep the count in sync (rendering is cheap).
-M.watchers.timer = hs.timer.doEvery(2, render)
+-- Watchers: active-space change + display config change. Wrapped in
+-- closures so the watchers' own callback arguments are never taken as
+-- `force`.
+M.watchers.spaces = hs.spaces.watcher.new(function() update(false) end):start()
+M.watchers.screen = hs.screen.watcher.new(function() update(true) end):start()
+
+-- The space watcher fires on switches but NOT on add/remove of spaces, so
+-- poll slowly to keep the count in sync. Each tick is now one cheap
+-- snapshot; nothing is drawn unless the signature changed.
+-- continueOnError=true: a transient failure (e.g. a display disconnecting
+-- mid-read) must not silently kill the poll for the rest of the session.
+M.watchers.timer = hs.timer.new(2, function() update(false) end, true):start()
 
 -- Click refreshes immediately.
-menubar:setClickCallback(render)
+menubar:setClickCallback(function() update(true) end)
 
-render()
+update(true)
 
 return M

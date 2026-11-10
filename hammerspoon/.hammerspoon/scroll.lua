@@ -51,14 +51,16 @@ local dirs = {}      -- set of currently-held directions, e.g. dirs.down = true
 local timer = nil
 local alertId = nil
 local borderCanvas = nil
-local scrollIdleTimer = nil
 
 -- Reset from actual scroll actions only (the continuous-scroll ticker,
 -- page/jump, and the help bar) -- never from mere keypresses -- so it can't
 -- be starved open the way onSelectKey used to be (see below).
+-- One reusable delayed timer: resetting it just pushes its deadline back.
+-- (The ticker resets it ~60x/s while scrolling, so allocating a fresh
+-- hs.timer per reset meant a steady stream of timer objects to GC.)
+local scrollIdleTimer = hs.timer.delayed.new(SCROLL_IDLE_TIMEOUT, function() scroll:exit() end)
 local function resetScrollIdle()
-    if scrollIdleTimer then scrollIdleTimer:stop() end
-    scrollIdleTimer = hs.timer.doAfter(SCROLL_IDLE_TIMEOUT, function() scroll:exit() end)
+    scrollIdleTimer:start()
 end
 
 local HINT_TEXT = "⬍ scroll  ·  hjkl / arrows move  ·  d/u / PgUp·PgDn page  ·  g/G / Home·End ends  ·  ? help  ·  esc"
@@ -154,7 +156,7 @@ end
 function scroll:exited()
     dirs = {}
     if timer then timer:stop(); timer = nil end
-    if scrollIdleTimer then scrollIdleTimer:stop(); scrollIdleTimer = nil end
+    scrollIdleTimer:stop()
     if alertId then hs.alert.closeSpecific(alertId); alertId = nil end
     if borderCanvas then borderCanvas:delete(); borderCanvas = nil end
 end

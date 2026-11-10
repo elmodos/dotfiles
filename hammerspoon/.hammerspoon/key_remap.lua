@@ -1,0 +1,67 @@
+-- Physical key remapping (HID layer), (re)applied on every Hammerspoon
+-- config load/reload.
+--
+-- Why remap here instead of handling these keys directly in Hammerspoon:
+-- F13/F16 have no default macOS behavior, so binding hs.hotkey to one of
+-- them is a plain OS-native hotkey -- macOS's own hotkey registration
+-- invokes Hammerspoon only on that exact key, with no per-keystroke
+-- callback running system-wide. Caps Lock and Right Cmd, by contrast, are
+-- real modifiers the OS treats specially (Caps Lock toggles a lock state;
+-- Cmd is read on every keystroke, everywhere): watching for them from
+-- inside Hammerspoon means an always-on eventtap inspecting every
+-- keystroke, which macOS can silently disable if some other callback on
+-- the same thread runs too slowly. Remapping them to inert F-keys at the
+-- HID layer -- before Hammerspoon or any app ever sees the original key --
+-- sidesteps that whole class of bug instead of working around it.
+--
+-- Right Cmd used to be left un-remapped on purpose, with right_cmd.lua
+-- telling it apart from Left Cmd by reading each event's raw per-side
+-- modifier flag (an API Hammerspoon's own docs mark experimental). That
+-- turned out unreliable in practice, and its failure mode was dangerous:
+-- Right Cmd stayed a genuine Cmd key, so every misfire fell through as a
+-- real system shortcut (RightCmd+M minimized a window instead of entering
+-- move/resize mode). Remapping it to a dead F-key like Caps Lock removes
+-- the ambiguity instead of trying to detect it: F16 has no native meaning,
+-- so a missed edge case here just does nothing, rather than something
+-- wrong. Every feature file gates on it through right_cmd.lua's one shared
+-- modal (entered on F16-down, exited on F16-up) instead of registering it
+-- as a literal mods={"cmd"} chord, because hs.hotkey's `mods` table has no
+-- way to require specifically the right-hand Cmd key. See right_cmd.lua for
+-- both that history and why the modal has to be shared rather than one per
+-- feature file.
+--
+-- Why every remap has to be declared together, in this one file/call:
+-- `hidutil property --set` REPLACES the entire UserKeyMapping list, it does
+-- not merge with whatever was already set. Two separate `hidutil` calls
+-- from two different files would silently cancel each other out (whichever
+-- runs last wins, wiping out the other's mapping) instead of both taking
+-- effect. So every physical remap this config wants must live in one
+-- array, in one call, in one place -- this file.
+--
+-- Why this runs on every config load: HID user key mappings live in the
+-- kernel/driver, not on disk, so they don't persist across logout or
+-- reboot and must be re-applied each time Hammerspoon starts.
+--
+-- HID usage codes below follow hidutil's own convention: usage page 0x07
+-- (Keyboard/Keypad) combined with the usage ID as 0x7000000XX.
+--
+-- Mappings:
+--   Caps Lock (0x39) -> F13 (0x68)
+--     caps_input_source.lua binds F13 to cycle the keyboard input layout.
+--     Caps Lock's normal behavior (toggling a lock LED) isn't something we
+--     want, so it becomes a spare, side-effect-free key instead.
+--   Right Cmd (0xE7) -> F16 (0x6B)
+--     right_cmd.lua binds F16's press/release as a shared hold-to-activate
+--     prefix: hold it and tap a key to fire a feature, release to cancel --
+--     no modal-with-timeout, no menu, no eventtap anywhere in the dispatch
+--     path (hs.hotkey.bind's press/release callbacks are native OS hotkey
+--     registrations). Right Cmd is rarely needed alone as a modifier, so
+--     giving it up trades it for this.
+--     F16, not F14/F15/F17-19, deliberately: F13 is already claimed above,
+--     and F14/F15 are the default brightness-down/brightness-up keys on any
+--     Mac keyboard that lacks its own dedicated brightness keys (common on
+--     external/older Apple keyboards) -- a per-machine System Settings
+--     change to free them up would defeat the point of this config working
+--     unmodified across multiple Macs. F16-F19 have no such default.
+local remap = [[hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000068},{"HIDKeyboardModifierMappingSrc":0x7000000E7,"HIDKeyboardModifierMappingDst":0x70000006B}]}']]
+hs.execute(remap)

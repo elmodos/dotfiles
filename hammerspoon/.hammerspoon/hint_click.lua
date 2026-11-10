@@ -228,8 +228,9 @@ local function gatherRoots()
     -- invocation; a short per-app timeout plus a hard overall budget keep
     -- one slow/unresponsive app -- or just having many apps open -- from
     -- blocking Hammerspoon's main thread long enough for macOS to disable
-    -- its global keyDown eventtap (leader_key/init.lua's ctrlTapWatcher)
-    -- and start dropping real keystrokes.
+    -- whatever event tap happens to be active at the time (e.g. this
+    -- overlay's own keyDown tap, started right after this function returns)
+    -- and start dropping the keystrokes/clicks it's supposed to be watching.
     local scanDeadline = hs.timer.secondsSinceEpoch() + TRAY_SCAN_BUDGET
     for _, app in ipairs(hs.application.runningApplications()) do
         if hs.timer.secondsSinceEpoch() > scanDeadline then break end

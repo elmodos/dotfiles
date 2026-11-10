@@ -1,18 +1,6 @@
--- Bind Ctrl-` to toggle WezTerm
-hs.hotkey.bind({"ctrl"}, "`", function()
-    local appName = "WezTerm" 
-    local app = hs.application.find(appName)
+-- Bind Ctrl-` to toggle WezTerm (see toggle_app.lua)
+local toggleApp = require("toggle_app")
 
-    if app then
-        if app:isFrontmost() then
-            app:hide()
-        else
-            app:activate()
-            local win = app:mainWindow()
-            local targetScreen = hs.mouse.getCurrentScreen()
-            if win and targetScreen and win:screen() ~= targetScreen then
-                win:moveToScreen(targetScreen, true, true, 0)
-            end
-        end
-    end
+hs.hotkey.bind({"ctrl"}, "`", function()
+    toggleApp.toggle("com.github.wez.wezterm")
 end)
